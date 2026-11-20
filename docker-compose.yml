@@ -1,0 +1,56 @@
+# Servidor del grupo (siempre) + central simulado y segundo servidor (solo perfil "local").
+services:
+  server:
+    build: ./server
+    container_name: ${GROUP_NAME:-g1}-server
+    environment:
+      GROUP_NAME: ${GROUP_NAME:-g1}
+      PUBLIC_URL: ${PUBLIC_URL:-http://server:8000}
+      CENTRAL_URL: ${CENTRAL_URL:-http://central:9000}
+      PORT: "8000"
+      DB_PATH: /data/chat.db
+      REGISTER_INTERVAL: ${REGISTER_INTERVAL:-30}
+      HEARTBEAT_INTERVAL: ${HEARTBEAT_INTERVAL:-5}
+      HEARTBEAT_MAX_FAILS: ${HEARTBEAT_MAX_FAILS:-3}
+      RETRY_BASE_SECONDS: ${RETRY_BASE_SECONDS:-0.5}
+      RETRY_MAX_SECONDS: ${RETRY_MAX_SECONDS:-30}
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - server-data:/data          # SQLite persistente: sobrevive a restart / down / up
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  central:
+    build: ./mock_central
+    container_name: mock-central
+    profiles: ["local"]
+    environment:
+      PORT: "9000"
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
+  server-b:
+    build: ./server
+    container_name: ${GROUP_NAME:-g1}b-server
+    profiles: ["local"]
+    environment:
+      GROUP_NAME: ${GROUP_NAME:-g1}b
+      PUBLIC_URL: http://server-b:8000
+      CENTRAL_URL: http://central:9000
+      PORT: "8000"
+      DB_PATH: /data/chat.db
+    ports:
+      - "8001:8000"
+    volumes:
+      - server-b-data:/data
+    restart: unless-stopped
+
+volumes:
+  server-data:
+  server-b-data:
