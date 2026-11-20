@@ -86,7 +86,8 @@ try:
     check("reloj de Lamport restaurado con el mayor lamport guardado", get_json(env.urls["a"] + "/status")["lamport"] == max_guardado)
     _, mpost = post_json(env.urls["a"] + "/messages", {"from": "ana@g1", "body": "tras reiniciar"})
     check("el primer mensaje tras reiniciar tiene lamport mayor que todos los guardados", mpost["lamport"] > max_guardado)
-
+    # El central simulado guarda el historial solo en memoria: esperar el reenvío antes de apagarlo.
+    check("b recibe el mensaje enviado tras reiniciar", esperar(lambda: mpost["id"] in ids(env, "b")))
     print("== 5. Central caído: pendientes, reintentos y reenvío al volver")
     esperar(lambda: get_json(env.urls["a"] + "/status")["central_up"])
     env.kill("central")
